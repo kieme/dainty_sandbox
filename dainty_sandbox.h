@@ -52,168 +52,172 @@ namespace dainty
 {
 namespace sandbox
 {
-  using named::t_explicit;
+  using named::t_prefix;
   using named::t_void;
   using named::t_bool;
   using named::t_n;
   using named::t_fd;
-  using named::t_prefix;
-  using named::t_errn;
-  using named::t_fd;
   using named::t_nsec;
-  using err::t_err;
+  using named::string::t_string;
 
-  enum multiple_of_1ms_tag_t { };
-  typedef strongtype_t<uint_t, multiple_of_1ms_tag_t> multiple_of_1ms_t;
+  using mt::detached_thread::t_thread;
+  using t_thread_logic = t_thread::t_logic;
 
-  enum label_tag_t { };
-  typedef string::nstring_t<16, label_tag_t> label_t;
-
-  class t_logic_impl_;
-  using p_logic_impl_ = t_prefix<t_logic_impl_>::p_;
+  enum  t_label_tag_ { };
+  using t_label = t_string<t_label_tag_>;
+  using R_label = t_prefix<t_label>::R_;
 
 ///////////////////////////////////////////////////////////////////////////////
 
-  class message_handler_t {
+  class t_message_logic {
   public:
-    typedef messaging::message_t message_t;
+    const t_label label;
 
-    message_handler_t(const label_t& label) : label_(label) { }
+    t_message_logic(R_label _label) : label(_label) { }
 
-    virtual ~message_handler_t() { }
-    virtual t_bool handle(message_t&) = 0;
-
-    const label_t label_;
+    virtual ~t_message_logic() { }
+    virtual t_bool process(r_message) = 0;
   };
 
 ///////////////////////////////////////////////////////////////////////////////
 
-  class stats_t {
+  class t_stats {
   public:
   };
 
 ///////////////////////////////////////////////////////////////////////////////
 
-  class t_logic : public detached::thread:t_logic {
+  class t_impl_;
+  using p_impl_ = t_prefix<t_impl_>::p_;
+
+///////////////////////////////////////////////////////////////////////////////
+
+  class t_logic;
+  using r_logic = t_prefix<t_logic>::r_;
+  using x_logic = t_prefix<t_logic>::x_;
+  using R_logic = t_prefix<t_logic>::R_;
+
+  class t_logic : public t_thread_logic {
   public:
-    typedef trace::source_t                      tracepoint_t;
-    typedef sandbox::multiple_of_1ms_t           multiple_of_1ms_t;
-    typedef sandbox::t_fd                        t_fd;
-    typedef sandbox::stats_t                     stats_t;
-    typedef sandbox::label_t                     label_t;
-    typedef sandbox::nanoseconds_t               nanoseconds_t;
-    typedef sandbox::message_handler_t           message_handler_t;
-    typedef messaging::multiple_of_100ms_t       multiple_of_100ms_t;
-    typedef messaging::password_t                password_t;
-    typedef messaging::messenger_timer_params_t  messenger_timer_params_t;
-    typedef messaging::messenger_key_t           messenger_key_t;
-    typedef messaging::messenger_visibility_t    messenger_visibility_t;
-    typedef messaging::messenger_state_t         messenger_state_t;
-    typedef messaging::messenger_prio_t          messenger_prio_t;
-    typedef messaging::messenger_user_t          messenger_user_t;
-    typedef messaging::messenger_name_t          messenger_name_t;
-    typedef messaging::messenger_create_params_t messenger_create_params_t;
-    typedef messaging::messenger_params_t        messenger_params_t;
-    typedef messaging::message_t                 message_t;
-    typedef messaging::messages_t                messages_t;
-    typedef messaging::message_id_t              message_id_t;
-    typedef messaging::messenger_memberlist_t    messenger_memberlist_t;
-    typedef messaging::messenger_memberkeylist_t messenger_memberkeylist_t;
+    using t_err                     = sandbox::err::t_err;
+    using t_multiple_of_1ms         = sandbox::t_multiple_of_1ms;
+    using t_fd                      = sandbox::t_fd;
+    using t_stats                   = sandbox::t_stats;
+    using t_label                   = sandbox::t_label;
+    using t_nsec                    = sandbox::t_nsec;
+    using t_message_logic           = sandbox::t_message_logic;
 
-    t_logic(R_name, R_create_params_);
+    using R_password                = messaging::R_password;
+    using t_message                 = messaging::t_message;
+    using t_messages                = messaging::t_messages;
+    using t_message_id              = messaging::t_message_id;
+    using t_multiple_of_100ms       = messaging::t_multiple_of_100ms;
+    using t_messenger_scope         = messaging::t_messenger_scope;
+    using R_messenger_password      = messaging::R_messenger_password;
+    using t_messenger_prio          = messaging::t_messenger_prio;
+    using t_messenger_user          = messaging::t_messenger_user;
+    using t_messenger_name          = messaging::t_messenger_name;
+    using t_messenger_key           = messaging::t_messenger_key;
+    using t_messenger_state         = messaging::t_messenger_state;
+    using t_messenger_params        = messaging::t_messenger_params;
+    using r_messenger_timer_params  = messaging::r_messenger_timer_params;
+    using R_messenger_timer_params  = messaging::R_messenger_timer_params;
+    using R_messenger_create_params = messaging::R_messenger_create_params;
 
-    t_logic(R_logic) = delete;
-    t_logic(x_logic) = delete;
+    t_logic(R_messenger_name, R_messenger_create_params);
+    virtual ~t_logic();
+
+    t_logic(R_logic)           = delete;
+    t_logic(x_logic)           = delete;
     r_logic operator=(R_logic) = delete;
     r_logic operator=(x_logic) = delete;
 
-    virtual ~t_logic();
-
     operator t_validity() const;
 
-    t_tracer& get_trace(t_err) const; // make trace point
-    t_name    get_name (t_err) const;
-    t_key     get_key  () const;
-    t_bool    get_params(t_err, r_messenger_params) const;
-    t_void    get_stats (t_err, stats_t&, t_bool reset = false);
+    t_tracer&        get_trace (t_err) const;
+    t_messenger_name get_name  (t_err) const;
+    t_key            get_key   () const;
+    t_bool           get_params(t_err, r_messenger_params) const;
+    t_void           get_stats (t_err, r_stats, t_bool reset = false);
 
 ///////////////////////////////////////////////////////////////////////////////
 
-    t_void post_message (t_err, R_messenger_key, r_message) const;
+    t_void post_message(t_err, R_messenger_key, r_message) const;
 
 ///////////////////////////////////////////////////////////////////////////////
 
-    t_void update_visibility  (t_err, t_visibility);
+    t_void update_scope       (t_err, t_messenger_scope);
     t_void update_alive_period(t_err, t_multiple_of_100ms);
 
 ///////////////////////////////////////////////////////////////////////////////
 
     t_void start_message_timer(t_errr, R_message_timer_params);
     t_void stop_message_timer (t_err);
-    t_bool query_message_timer(t_err, r_message_timer_params) const;
+    t_void query_message_timer(t_err, r_message_timer_params) const;
 
 ///////////////////////////////////////////////////////////////////////////////
 
-    t_bool add_monitor(const messenger_name_t&,
-                       messenger_prio_t = messenger_prio_t(0),
-                       messenger_user_t = messenger_user_t());
-    t_bool remove_monitor(const messenger_name_t&,
-                          messenger_user_t* = 0);
-    messenger_key_t is_monitored(const messenger_name_t&,
-                                 messenger_user_t* = 0) const;
-    t_bool get_monitored(messenger_memberkeylist_t&) const;
+    t_void add_monitor(t_err, R_messenger_name,
+                              t_messenger_prio = t_messenger_prio(0),
+                              t_messenger_user = t_messenger_user());
+    t_void remove_monitor(t_err, R_messenger_name, p_messenger_user = nullptr);
+    t_messenger_key is_monitored(t_err, R_messenger_name,
+                                        p_messenger_user = nullptr) const;
+    t_void get_monitored(t_err, r_messenger_memberkeylist) const;
 
 ///////////////////////////////////////////////////////////////////////////////
 
-    t_bool add_to_group(const password_t&, const messenger_name_t& group,
-                        messenger_prio_t = messenger_prio_t(0),
-                        messenger_user_t = messenger_user_t());
-    t_bool remove_from_group(const password_t&, const messenger_name_t&,
-                             messenger_user_t* = 0);
-    t_bool is_in_group(const messenger_name_t&,
-                       messenger_user_t* = 0) const;
-    t_bool get_groups(messenger_memberlist_t&) const;
+    t_void add_to_group(t_err, R_password, R_messenger_name group,
+                               t_messenger_prio = t_messenger_prio(0),
+                               t_messenger_user = t_messenger_user());
+    t_void remove_from_group(t_err, R_password, R_messenger_name,
+                                    p_messenger_user = nullptr);
+    t_bool is_in_group(t_err, R_messenger_name,
+                              p_messenger_user = nullptr) const;
+    t_void get_groups(t_err, r_messenger_memberlist) const;
 
 ///////////////////////////////////////////////////////////////////////////////
 
-    t_bool create_group(const password_t&, const messenger_name_t&,
-                        messenger_visibility_t);
-    t_bool destroy_group(const password_t&, const messenger_name_t&);
-    t_bool fetch_group(const messenger_name_t&,
-                       messenger_visibility_t&, messenger_memberlist_t* = 0);
+    t_void create_group (t_err, R_password, R_messenger_name,
+                                t_messenger_scope);
+    t_void destroy_group(t_err, R_password, R_messenger_name);
+    t_void fetch_group  (t_err, R_messenger_name, r_messenger_scope,
+                                messenger_memberlist_t* = 0);
 
 ///////////////////////////////////////////////////////////////////////////////
 
-    t_bool add_another_to_group(const password_t&,
-                                const messenger_name_t& name,
-                                const messenger_name_t& group,
-                                messenger_prio_t = messenger_prio_t(0),
-                                messenger_user_t = messenger_user_t());
-    t_bool remove_another_from_group(const password_t&,
-                                     const messenger_name_t& name,
-                                     const messenger_name_t& group,
-                                     messenger_user_t* = 0);
-    t_bool is_another_in_group(const messenger_name_t& name,
-                               const messenger_name_t& group,
-                               messenger_user_t* = 0);
+    t_bool add_another_to_group(t_err, R_password,
+                                       R_messenger_name name,
+                                       R_messenger_name group,
+                                       t_messenger_prio = t_messenger_prio(0),
+                                       t_messenger_user = t_messenger_user());
+    t_bool remove_another_from_group(t_err, R_password,
+                                            R_messenger_name,
+                                            R_messenger_name group,
+                                            p_messenger_user = nullptr);
+    t_bool is_another_in_group(t_err, R_messenger_name,
+                                      R_messenger_name group,
+                                      p_messenger_user = nullptr);
 
 ///////////////////////////////////////////////////////////////////////////////
 
-    multiple_of_1ms_t get_max_wait() const;
-    t_void            set_max_wait(multiple_of_1ms_t);
+    t_multiple_of_1ms get_max_wait() const;
+    t_void            set_max_wait(t_multiple_of_1ms);
 
 ///////////////////////////////////////////////////////////////////////////////
 
-    t_bool   register_message_handler     (R_message_id, message_handler_t*);
-    t_bool unregister_message_handler     (R_message_id);
-    t_bool   is_message_handler_registered(message_handler_t*) const;
+    t_void   register_message_logic(t_err, R_message_id, R_label,
+                                           p_message_logic);
+    p_message_logic unregister_message_logic(t_err, R_label);
+    p_message_logic is_message_logic_registered(t_err, R_label) const;
 
 ///////////////////////////////////////////////////////////////////////////////
 
-    // WR/RX
-    t_bool add_event_monitor   (t_fd, const label_t&, messenger_user_t);
-    t_bool remove_event_monitor(t_fd, label_t* = 0, messenger_user_t* = 0);
-    t_bool is_event_monitored  (t_fd, label_t* = 0, messenger_user_t* = 0);
+    t_bool add_event_monitor   (t_err, t_fd, R_label, t_messenger_user);
+    t_bool remove_event_monitor(t_err, t_fd, p_label = nullptr,
+                                       p_messenger_user = nullptr);
+    t_bool is_event_monitored  (t_err, t_fd, p_label = nullptr,
+                                       p_messenger_user = nullptr);
 
 ///////////////////////////////////////////////////////////////////////////////
 
@@ -222,28 +226,27 @@ namespace sandbox
 
 ///////////////////////////////////////////////////////////////////////////////
 
-    virtual t_void handle_wakeup(nanoseconds_t elapsed, t_bool maxwait) = 0;
-    virtual t_void handle_notify(messenger_state_t,
-                                 const messenger_name_t&,
-                                 const messenger_key_t&,
-                                 messenger_prio_t,
-                                 messenger_user_t) = 0;
-    virtual t_void handle_user(message_t&) = 0;
-    virtual t_void handle_bad(message_t&)  = 0;
-    virtual t_void handle_timeout(t_bool periodic,
-                                  multiple_of_100ms_t,
-                                  const messenger_key_t&,
-                                  messenger_prio_t,
-                                  messenger_user_t) = 0;
-    virtual t_void handle_failed(errorid_t, message_t&) = 0;
-    virtual t_void handle_event(fd_t, const label_t&, messenger_user_t) = 0;
+    virtual t_void process_wakeup(t_nsec elapsed, t_bool maxwait) = 0;
+    virtual t_void process_notify(t_messenger_state,
+                                  R_messenger_name,
+                                  R_messenger_key,
+                                  t_messenger_prio,
+                                  t_messenger_user) = 0;
+    virtual t_void process_user(x_message) = 0;
+    virtual t_void process_bad (x_message) = 0;
+    virtual t_void process_timeout(t_bool periodic,
+                                   t_multiple_of_100ms,
+                                   R_messenger_key,
+                                   t_messenger_prio,
+                                   t_messenger_user) = 0;
+    virtual t_void process_failed(errorid_t, x_message) = 0;
+    virtual t_void process_event(t_fd, R_label, t_messenger_user) = 0;
 
 ///////////////////////////////////////////////////////////////////////////////
 
   private:
-    friend class t_logic_impl_;
-
-    p_logic_impl_ impl_;
+    friend class t_impl_;
+    p_impl_ impl_;
   };
 
 ///////////////////////////////////////////////////////////////////////////////
@@ -258,14 +261,12 @@ namespace sandbox
      t_sandbox(R_name, t_passable_ptr<t_logic>);
      t_sandbox(R_sandbox) = delete;
      t_sandbox(x_sandbox) = delete;
-    ~t_sandbox();
 
      r_sandbox operator=(R_sandbox) = delete;
      r_sandbox operator=(x_sandbox) = delete;
 
   private:
-    t_key    key_;
-    t_thread thread_;
+     t_thread thread_;
   };
 
 ///////////////////////////////////////////////////////////////////////////////
