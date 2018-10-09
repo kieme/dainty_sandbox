@@ -29,7 +29,7 @@
 
 #include "dainty_named.h"
 #include "dainty_named_string.h"
-#include "dainty_os_clock.h"
+#include "dainty_named_ptr.h"
 #include "dainty_os_threading_thread.h"
 #include "dainty_tracing_tracer.h"
 #include "dainty_messaging_messenger.h"
@@ -58,10 +58,10 @@ namespace sandbox
   using named::t_n;
   using named::t_fd;
   using named::t_nsec;
+  using named::ptr::t_ptr;
   using named::string::t_string;
 
-  using mt::detached_thread::t_thread;
-  using t_thread_logic = t_thread::t_logic;
+  using t_thread_logic = mt::detached_thread::t_thread::t_logic;
 
   enum  t_label_tag_ { };
   using t_label = t_string<t_label_tag_>;
@@ -71,10 +71,6 @@ namespace sandbox
 
   class t_message_logic {
   public:
-    const t_label label;
-
-    t_message_logic(R_label _label) : label(_label) { }
-
     virtual ~t_message_logic() { }
     virtual t_bool process(r_message) = 0;
   };
@@ -97,7 +93,7 @@ namespace sandbox
   using x_logic = t_prefix<t_logic>::x_;
   using R_logic = t_prefix<t_logic>::R_;
 
-  class t_logic : public t_thread_logic {
+  class t_logic : public t_thread_logic, public t_dispatcher_logic {
   public:
     using t_err                     = sandbox::err::t_err;
     using t_multiple_of_1ms         = sandbox::t_multiple_of_1ms;
@@ -124,7 +120,7 @@ namespace sandbox
     using R_messenger_timer_params  = messaging::R_messenger_timer_params;
     using R_messenger_create_params = messaging::R_messenger_create_params;
 
-    t_logic(R_messenger_name, R_messenger_create_params);
+    t_logic(t_err, R_messenger_name, R_messenger_create_params);
     virtual ~t_logic();
 
     t_logic(R_logic)           = delete;
@@ -206,8 +202,8 @@ namespace sandbox
 
 ///////////////////////////////////////////////////////////////////////////////
 
-    t_void   register_message_logic(t_err, R_message_id, R_label,
-                                           p_message_logic);
+    t_void register_message_logic(t_err, R_message_id, R_label,
+                                         p_message_logic);
     p_message_logic unregister_message_logic(t_err, R_label);
     p_message_logic is_message_logic_registered(t_err, R_label) const;
 
@@ -246,7 +242,7 @@ namespace sandbox
 
   private:
     friend class t_impl_;
-    p_impl_ impl_;
+    mutable p_impl_ impl_;
   };
 
 ///////////////////////////////////////////////////////////////////////////////
@@ -258,7 +254,10 @@ namespace sandbox
 
   class t_sandbox {
   public:
-     t_sandbox(R_name, t_passable_ptr<t_logic>);
+    using t_ptr_ = t_ptr<t_logic, t_sandbox, named::ptr::t_deleter>;
+
+     t_sandbox(R_name, t_ptr_);
+
      t_sandbox(R_sandbox) = delete;
      t_sandbox(x_sandbox) = delete;
 
@@ -266,7 +265,7 @@ namespace sandbox
      r_sandbox operator=(x_sandbox) = delete;
 
   private:
-     t_thread thread_;
+     mt::detached_thread::t_thread thread_;
   };
 
 ///////////////////////////////////////////////////////////////////////////////
