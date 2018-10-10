@@ -24,6 +24,8 @@
 
 ******************************************************************************/
 
+#include "dainty_mt_detached_thread.h"
+#include "dainty_mt_event_dispatcher.h"
 #include "dainty_sandbox.h"
 
 ///////////////////////////////////////////////////////////////////////////////
@@ -32,13 +34,561 @@ namespace dainty
 {
 namespace sandbox
 {
+  using messaging::message::t_message;
+
+  using t_logic_            = sandbox::t_logic;
+  using t_dispatcher_logic_ = mt::event_dispatcher::t_dispatcher::t_logic;
+  using t_thread_logic_     = mt::detached_thread::t_thread::t_logic;
+
+///////////////////////////////////////////////////////////////////////////////
+
+  class t_impl_ : public t_thread_logic_, public t_dispatcher_logic_ {
+  public:
+    using t_thread_err              = t_thread_logic_::t_err;
+    using t_err                     = t_logic_::t_err;
+    using r_err                     = t_prefix<t_err>::r_;
+    using t_fd                      = t_logic_::t_fd;
+    using t_stats                   = t_logic_::t_stats;
+    using t_label                   = t_logic_::t_label;
+    using t_message_logic           = t_logic_::t_message_logic;
+    using r_tracer                  = t_logic_::r_tracer;
+    using R_password                = t_logic_::R_password;
+    using t_message                 = t_logic_::t_message;
+    using x_message                 = t_logic_::x_message;
+    using t_messages                = t_logic_::t_messages;
+    using t_message_id              = t_logic_::t_message_id;
+    using R_message_id              = t_logic_::R_message_id;
+    using t_multiple_of_100ms       = t_logic_::t_multiple_of_100ms;
+    using t_messenger_scope         = t_logic_::t_messenger_scope;
+    using r_messenger_scope         = t_logic_::r_messenger_scope;
+    using p_messenger_name_list     = t_logic_::p_messenger_name_list;
+    using R_messenger_password      = t_logic_::R_messenger_password;
+    using t_messenger_prio          = t_logic_::t_messenger_prio;
+    using t_messenger_user          = t_logic_::t_messenger_user;
+    using p_messenger_user          = t_logic_::p_messenger_user;
+    using t_messenger_name          = t_logic_::t_messenger_name;
+    using R_messenger_name          = t_logic_::R_messenger_name;
+    using t_messenger_key           = t_logic_::t_messenger_key;
+    using R_messenger_key           = t_logic_::R_messenger_key;
+    using t_messenger_state         = t_logic_::t_messenger_state;
+    using t_messenger_params        = t_logic_::t_messenger_params;
+    using r_messenger_params        = t_logic_::r_messenger_params;
+    using r_messenger_timer_params  = t_logic_::r_messenger_timer_params;
+    using R_messenger_timer_params  = t_logic_::R_messenger_timer_params;
+    using r_messenger_group_list    = t_logic_::r_messenger_group_list;
+    using r_messenger_monitor_list  = t_logic_::r_messenger_monitor_list;
+    using R_messenger_create_params = t_logic_::R_messenger_create_params;
+
+    t_impl_(r_err err, R_messenger_name name,
+                       R_messenger_create_params params) {
+    }
+
+    ~t_impl_() {
+    }
+
+    operator t_validity() const {
+      return valid_;
+    }
+
+    t_messenger_key get_key() const {
+      return key_;
+    }
+
+    r_tracer get_tracer(r_err) const {
+    }
+
+    t_messenger_name get_name(r_err) const {
+    }
+
+    t_void get_params(r_err, r_messenger_params) const {
+    }
+
+    t_void get_stats(r_err, r_stats, t_bool) {
+    }
+
+    t_void post_message(r_err, R_messenger_key, x_message) const {
+    }
+
+    t_void update_scope(r_err, t_messenger_scope) {
+    }
+
+    t_void update_alive_period(r_err, t_multiple_of_100ms) {
+    }
+
+    t_void start_message_timer(r_err, R_messenger_timer_params) {
+    }
+
+    t_void stop_message_timer(r_err) {
+    }
+
+    t_void query_message_timer(r_err, r_messenger_timer_params) const {
+    }
+
+    t_void add_monitor(r_err, R_messenger_name, t_messenger_prio,
+                              t_messenger_user) {
+    }
+
+    t_void remove_monitor(r_err, R_messenger_name, p_messenger_user) {
+    }
+
+    t_messenger_key is_monitored(r_err, R_messenger_name,
+                                        p_messenger_user) const {
+      return t_messenger_key{0};
+    }
+
+    t_void get_monitored(r_err, r_messenger_monitor_list) const {
+    }
+
+    t_void add_to_group(r_err, R_password, R_messenger_name group,
+                               t_messenger_prio, t_messenger_user) {
+    }
+
+    t_void remove_from_group(r_err, R_password, R_messenger_name,
+                                    p_messenger_user) {
+    }
+
+    t_bool is_in_group(r_err, R_messenger_name, p_messenger_user) const {
+      return true;
+    }
+
+    t_void get_groups(r_err, r_messenger_group_list) const {
+    }
+
+    t_void create_group(r_err, R_password, R_messenger_name,
+                               t_messenger_scope) {
+    }
+
+    t_void destroy_group(r_err, R_password, R_messenger_name) {
+    }
+
+    t_bool is_group(r_err, R_messenger_name, r_messenger_scope,
+                           p_messenger_name_list) {
+      return true;
+    }
+
+    t_void add_another_to_group(r_err, R_password, R_messenger_name,
+                                       R_messenger_name, // group
+                                       t_messenger_prio, t_messenger_user) {
+    }
+
+    t_void remove_another_from_group(r_err, R_password,
+                                            R_messenger_name,
+                                            R_messenger_name, // group
+                                            p_messenger_user) {
+    }
+
+    t_bool is_another_in_group(r_err, R_messenger_name,
+                                      R_messenger_name, // group
+                                      p_messenger_user) {
+      return true;
+    }
+
+    t_msec get_max_wait() const {
+      return t_msec{0};
+    }
+
+    t_void set_max_wait(r_err, t_msec) {
+    }
+
+    t_void register_message_logic(r_err, R_message_id, R_label,
+                                         p_message_logic) {
+    }
+
+    p_message_logic unregister_message_logic(r_err, R_label) {
+      return nullptr;
+    }
+
+    p_message_logic is_message_logic_registered(r_err, R_label) const {
+      return nullptr;
+    }
+
+    t_void add_event_monitor(r_err, t_fd, R_label, t_messenger_user) {
+    }
+
+    t_void remove_event_monitor(r_err, t_fd, p_label, p_messenger_user) {
+    }
+
+    t_bool is_event_monitored(r_err, t_fd, p_label, p_messenger_user) {
+      return true;
+    }
+
+    virtual t_void update(t_thread_err, os::r_pthread_attr) noexcept override {
+    }
+
+    virtual t_void prepare(t_thread_err) noexcept override {
+    }
+
+    virtual t_void run() noexcept override {
+    }
+
+    virtual t_void may_reorder_events(r_event_infos) override {
+    }
+
+    virtual t_void notify_event_remove(r_event_info) override {
+    }
+
+    virtual t_quit notify_timeout(t_usec) override {
+      return true;
+    }
+
+    virtual t_quit notify_error(t_errn) override {
+      return true;
+    }
+
+    virtual t_quit notify_events_processed() override {
+      return true;
+    }
+
+  private:
+    t_validity      valid_ = INVALID;
+    t_messenger_key key_   = t_messenger_key{0};
+  };
+
+///////////////////////////////////////////////////////////////////////////////
+
+  t_logic::t_logic(t_err err, R_messenger_name name,
+                              R_messenger_create_params params) {
+    // impl
+  }
+
+  t_logic::~t_logic() {
+  }
+
+  t_logic::operator t_validity() const {
+    return impl_ ? *impl_ : INVALID;
+  }
+
+  t_logic::t_messenger_key t_logic::get_key() const {
+    if (impl_ && *impl_ == VALID)
+      return impl_->get_key();
+    return t_messenger_key{0};
+  }
+
+  t_logic::r_tracer t_logic::get_tracer() const {
+  }
+
+  t_logic::t_messenger_name t_logic::get_name(t_err err) const {
+    ERR_GUARD(err) {
+        return impl_->get_name(err);
+      err = err::E_XXX;
+    }
+    return t_messenger_name{};
+  }
+
+  t_void t_logic::get_params(t_err err, r_messenger_params params) const {
+    ERR_GUARD(err) {
+      if (impl_ && *impl_ == VALID)
+        impl_->get_params(err, params);
+      else
+        err = err::E_XXX;
+    }
+  }
+
+  t_void t_logic::get_stats(t_err err, r_stats stats, t_bool reset) {
+    ERR_GUARD(err) {
+      if (impl_ && *impl_ == VALID)
+        impl_->get_stats(err, stats, reset);
+      else
+        err = err::E_XXX;
+    }
+  }
+
+  t_void t_logic::post_message(t_err err, R_messenger_key key,
+                               x_message msg) const {
+    ERR_GUARD(err) {
+      if (impl_ && *impl_ == VALID)
+        impl_->post_message(err, key, std::move(msg));
+      else
+        err = err::E_XXX;
+    }
+  }
+
+  t_void t_logic::update_scope(t_err err, t_messenger_scope scope) {
+    ERR_GUARD(err) {
+      if (impl_ && *impl_ == VALID)
+        impl_->update_scope(err, scope);
+      else
+        err = err::E_XXX;
+    }
+  }
+
+  t_void t_logic::update_alive_period(t_err err, t_multiple_of_100ms factor) {
+    ERR_GUARD(err) {
+      if (impl_ && *impl_ == VALID)
+        impl_->update_alive_period(err, factor);
+      else
+        err = err::E_XXX;
+    }
+  }
+
+  t_void t_logic::start_message_timer(t_err err,
+                                      R_messenger_timer_params params) {
+    ERR_GUARD(err) {
+      if (impl_ && *impl_ == VALID)
+        impl_->start_message_timer(err, params);
+      else
+        err = err::E_XXX;
+    }
+  }
+
+  t_void t_logic::stop_message_timer(t_err err) {
+    ERR_GUARD(err) {
+      if (impl_ && *impl_ == VALID)
+        impl_->stop_message_timer(err);
+      else
+        err = err::E_XXX;
+    }
+  }
+
+  t_void t_logic::query_message_timer(t_err err,
+                                      r_messenger_timer_params params) const {
+    ERR_GUARD(err) {
+      if (impl_ && *impl_ == VALID)
+        impl_->query_message_timer(err, params);
+      else
+        err = err::E_XXX;
+    }
+  }
+
+  t_void t_logic::add_monitor(t_err err, R_messenger_name name,
+                              t_messenger_prio prio, t_messenger_user user) {
+    ERR_GUARD(err) {
+      if (impl_ && *impl_ == VALID)
+        impl_->add_monitor(err, name, prio, user);
+      else
+        err = err::E_XXX;
+    }
+  }
+
+  t_void t_logic::remove_monitor(t_err err, R_messenger_name name,
+                                 p_messenger_user user) {
+    ERR_GUARD(err) {
+      if (impl_ && *impl_ == VALID)
+        impl_->remove_monitor(err, name, user);
+      else
+        err = err::E_XXX;
+    }
+  }
+
+  t_messenger_key t_logic::is_monitored(t_err err, R_messenger_name name,
+                                        p_messenger_user user) const {
+    ERR_GUARD(err) {
+      if (impl_ && *impl_ == VALID)
+        return impl_->is_monitored(err, name, user);
+      err = err::E_XXX;
+    }
+    return t_messenger_key{0};
+  }
+
+  t_void t_logic::get_monitored(t_err err, r_messenger_monitor_list list) const {
+    ERR_GUARD(err) {
+      if (impl_ && *impl_ == VALID)
+        impl_->get_monitored(err, list);
+      else
+        err = err::E_XXX;
+    }
+  }
+
+  t_void t_logic::add_to_group(t_err err, R_password password,
+                               R_messenger_name group, t_messenger_prio prio,
+                               t_messenger_user user) {
+    ERR_GUARD(err) {
+      if (impl_ && *impl_ == VALID)
+        impl_->add_to_group(err, password, group, prio, user);
+      else
+        err = err::E_XXX;
+    }
+  }
+
+  t_void t_logic::remove_from_group(t_err err, R_password password,
+                                    R_messenger_name group,
+                                    p_messenger_user user) {
+    ERR_GUARD(err) {
+      if (impl_ && *impl_ == VALID)
+        impl_->remove_from_group(err, password, group, user);
+      else
+        err = err::E_XXX;
+    }
+  }
+
+  t_bool t_logic::is_in_group(t_err err, R_messenger_name group,
+                              p_messenger_user user) const {
+    ERR_GUARD(err) {
+      if (impl_ && *impl_ == VALID)
+        return impl_->is_in_group(err, group, user);
+      err = err::E_XXX;
+    }
+    return false;
+  }
+
+  t_void t_logic::get_groups(t_err err,
+                             r_messenger_group_list list) const {
+    ERR_GUARD(err) {
+      if (impl_ && *impl_ == VALID)
+        impl_->get_groups(err, list);
+      else
+        err = err::E_XXX;
+    }
+  }
+
+  t_void t_logic::create_group(t_err err, R_password password,
+                               R_messenger_name group,
+                               t_messenger_scope scope) {
+    ERR_GUARD(err) {
+      if (impl_ && *impl_ == VALID)
+        impl_->create_group(err, password, group, scope);
+      else
+        err = err::E_XXX;
+    }
+  }
+
+  t_void t_logic::destroy_group(t_err err, R_password password,
+                                R_messenger_name group) {
+    ERR_GUARD(err) {
+      if (impl_ && *impl_ == VALID)
+        impl_->destroy_group(err, password, group);
+      else
+        err = err::E_XXX;
+    }
+  }
+
+  t_bool t_logic::is_group(t_err err, R_messenger_name group,
+                           r_messenger_scope scope,
+                           p_messenger_name_list list) {
+    ERR_GUARD(err) {
+      if (impl_ && *impl_ == VALID)
+        return impl_->is_group(err, group, scope, list);
+      err = err::E_XXX;
+    }
+    return false;
+  }
+
+  t_void t_logic::add_another_to_group(t_err err, R_password password,
+                                       R_messenger_name name,
+                                       R_messenger_name group,
+                                       t_messenger_prio prio,
+                                       t_messenger_user user) {
+    ERR_GUARD(err) {
+      if (impl_ && *impl_ == VALID)
+        impl_->add_another_to_group(err, password, name, group, prio, user);
+      else
+        err = err::E_XXX;
+    }
+  }
+
+  t_void t_logic::remove_another_from_group(t_err err, R_password password,
+                                            R_messenger_name name,
+                                            R_messenger_name group,
+                                            p_messenger_user user) {
+    ERR_GUARD(err) {
+      if (impl_ && *impl_ == VALID)
+        impl_->remove_another_from_group(err, password, name, group, user);
+      else
+        err = err::E_XXX;
+    }
+  }
+
+  t_bool t_logic::is_another_in_group(t_err err, R_messenger_name name,
+                                      R_messenger_name group,
+                                      p_messenger_user user) {
+    ERR_GUARD(err) {
+      if (impl_ && *impl_ == VALID)
+        return impl_->is_another_in_group(err, name, group, user);
+      err = err::E_XXX;
+    }
+    return false;
+  }
+
+  t_msec t_logic::get_max_wait() const {
+    if (impl_ && *impl_ == VALID)
+      return impl_->get_max_wait();
+    return t_msec{0};
+  }
+
+  t_void t_logic::set_max_wait(t_err err, t_msec msec) {
+    ERR_GUARD(err) {
+      if (impl_ && *impl_ == VALID)
+        impl_->set_max_wait(err, msec);
+      else
+        err = err::E_XXX;
+    }
+  }
+
+  t_void t_logic::register_message_logic(t_err err, R_message_id mid,
+                                         R_label label,
+                                         p_message_logic logic) {
+    ERR_GUARD(err) {
+      if (impl_ && *impl_ == VALID)
+        impl_->register_message_logic(err, mid, label, logic);
+      else
+        err = err::E_XXX;
+    }
+  }
+
+  t_logic::p_message_logic
+      t_logic::unregister_message_logic(t_err err, R_label label) {
+    ERR_GUARD(err) {
+      if (impl_ && *impl_ == VALID)
+        return impl_->unregister_message_logic(err, label);
+      err = err::E_XXX;
+    }
+    return nullptr;
+  }
+
+  t_logic::p_message_logic
+      t_logic::is_message_logic_registered(t_err err, R_label label) const {
+    ERR_GUARD(err) {
+      if (impl_ && *impl_ == VALID)
+        return impl_->is_message_logic_registered(err, label);
+      err = err::E_XXX;
+    }
+    return nullptr;
+  }
+
+  t_void t_logic::add_event_monitor(t_err err, t_fd fd, R_label label,
+                                    t_messenger_user user) {
+    ERR_GUARD(err) {
+      if (impl_ && *impl_ == VALID)
+        impl_->add_event_monitor(err, fd, label, user);
+      else
+        err = err::E_XXX;
+    }
+  }
+
+  t_void t_logic::remove_event_monitor(t_err err, t_fd fd, p_label label,
+                                       p_messenger_user user) {
+    ERR_GUARD(err) {
+      if (impl_ && *impl_ == VALID)
+        impl_->remove_event_monitor(err, fd, label, user);
+      else
+        err = err::E_XXX;
+    }
+  }
+
+  t_bool t_logic::is_event_monitored(t_err err, t_fd fd, p_label label,
+                                     p_messenger_user user) {
+    ERR_GUARD(err) {
+      if (impl_ && *impl_ == VALID)
+        return impl_->is_event_monitored(err, fd, label, user);
+      err = err::E_XXX;
+    }
+    return false;
+  }
+
+///////////////////////////////////////////////////////////////////////////////
+
   t_sandbox::t_sandbox(t_err err, R_name name, t_ptr_ ptr)
     : key_{0/* get it from logic*/},
       thread_(err, name.get_cstr(), {ptr.release()}) {
   }
 
   t_sandbox::~t_sandbox() {
-    // send kill signal
+    t_err err;
+    messaging::post_message(err, key_, t_message{}); // t_kill_message
+    if (err) {
+      // XXX-now
+      err.clear();
+    }
   }
 
 ///////////////////////////////////////////////////////////////////////////////
