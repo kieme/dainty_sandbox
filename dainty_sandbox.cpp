@@ -96,92 +96,117 @@ namespace sandbox
     }
 
     t_messenger_key get_key() const {
+      return msgr_.get_key();
     }
 
-    t_messenger_name get_name(r_err) const {
+    t_messenger_name get_name(r_err err) const {
+      return msgr_.get_name(err);
     }
 
-    t_void get_params(r_err, r_messenger_params) const {
+    t_void get_params(r_err err, r_messenger_params params) const {
+      return msgr_.get_params(err, params);
     }
 
     t_void get_stats(r_err, r_stats, t_bool) {
+      //XXX - counters for everything
     }
 
-    t_void post_message(r_err, R_messenger_key, x_message) const {
+    t_void post_message(r_err err, R_messenger_key key, x_message msg) {
+      msgr_.post_message(err, key, std::move(msg));
     }
 
-    t_void update_scope(r_err, t_messenger_scope) {
+    t_void update_scope(r_err err, t_messenger_scope scope) {
+      msgr_.update_scope(err, scope);
     }
 
-    t_void update_alive_period(r_err, t_multiple_of_100ms) {
+    t_void update_alive_period(r_err err, t_multiple_of_100ms factor) {
+      msgr_.update_alive_period(err, factor);
     }
 
-    t_void start_message_timer(r_err, R_messenger_timer_params) {
+    t_void start_message_timer(r_err err, R_messenger_timer_params params) {
+      msgr_.start_timer(err, params);
     }
 
-    t_void stop_message_timer(r_err) {
+    t_void stop_message_timer(r_err err) {
+      msgr_.stop_timer(err);
     }
 
-    t_void query_message_timer(r_err, r_messenger_timer_params) const {
+    t_void query_message_timer(r_err err,
+                               r_messenger_timer_params params) const {
+      msgr_.query_timer(err, params);
     }
 
-    t_void add_monitor(r_err, R_messenger_name, t_messenger_prio,
-                              t_messenger_user) {
+    t_void add_monitor(r_err err, R_messenger_name name, t_messenger_prio prio,
+                       t_messenger_user user) {
+      msgr_.add_monitor(err, name, prio, user);
     }
 
-    t_void remove_monitor(r_err, R_messenger_name, p_messenger_user) {
+    t_void remove_monitor(r_err err, R_messenger_name name,
+                          p_messenger_user user) {
+      msgr_.remove_monitor(err, name, user);
     }
 
-    t_messenger_key is_monitored(r_err, R_messenger_name,
-                                        p_messenger_user) const {
-      return t_messenger_key{0};
+    t_messenger_key is_monitored(r_err err, R_messenger_name name,
+                                 p_messenger_user user) const {
+      return msgr_.is_monitored(err, name, user);
     }
 
-    t_void get_monitored(r_err, r_messenger_monitor_list) const {
+    t_void get_monitored(r_err err, r_messenger_monitor_list list) const {
+      msgr_.get_monitored(err, list);
     }
 
-    t_void add_to_group(r_err, R_password, R_messenger_name, // group
-                               t_messenger_prio, t_messenger_user) {
+    t_void add_to_group(r_err err, R_messenger_password password,
+                        R_messenger_name group, t_messenger_prio prio,
+                        t_messenger_user user) {
+      msgr_.add_to_group(err, password, group, prio, user);
     }
 
-    t_void remove_from_group(r_err, R_password, R_messenger_name, //group
-                                    p_messenger_user) {
+    t_void remove_from_group(r_err err, R_messenger_password password,
+                             R_messenger_name group, p_messenger_user user) {
+      msgr_.remove_from_group(err, password, group, user);
     }
 
-    t_bool is_in_group(r_err, R_messenger_name, p_messenger_user) const {
-      return true;
+    t_bool is_in_group(r_err err, R_messenger_name group,
+                       p_messenger_user user) const {
+      return msgr_.is_in_group(err, group, user);
     }
 
-    t_void get_groups(r_err, r_messenger_group_list) const {
+    t_void get_groups(r_err err, r_messenger_group_list list) {
+      msgr_.get_groups(err, list);
     }
 
-    t_void create_group(r_err, R_password, R_messenger_name,
-                               t_messenger_scope) {
+    t_void create_group(r_err err, R_password password, R_messenger_name group,
+                               t_messenger_scope scope) {
+      messaging::create_group(err, password, group, scope);
     }
 
-    t_void destroy_group(r_err, R_password, R_messenger_name) {
+    t_void destroy_group(r_err err, R_password password,
+                         R_messenger_name group) {
+      messaging::destroy_group(err, password, group);
     }
 
-    t_bool is_group(r_err, R_messenger_name, r_messenger_scope,
-                           p_messenger_name_list) {
-      return true;
+    t_bool is_group(r_err err, R_messenger_name group,
+                    r_messenger_scope scope, p_messenger_name_list list) {
+      return messaging::is_group(err, group, scope, list);
     }
 
-    t_void add_another_to_group(r_err, R_password, R_messenger_name,
-                                       R_messenger_name, // group
-                                       t_messenger_prio, t_messenger_user) {
+    t_void add_another_to_group(r_err err, R_messenger_password password,
+                                R_messenger_name name,
+                                R_messenger_name group, t_messenger_prio prio,
+                                t_messenger_user user) {
+      messaging::add_messenger_to_group(err, password, name, group, prio, user);
     }
 
-    t_void remove_another_from_group(r_err, R_password,
-                                            R_messenger_name,
-                                            R_messenger_name, // group
-                                            p_messenger_user) {
+    t_void remove_another_from_group(r_err err, R_messenger_password password,
+                                     R_messenger_name name,
+                                     R_messenger_name group,
+                                     p_messenger_user user) {
+      messaging::remove_messenger_from_group(err, password, name, group, user);
     }
 
-    t_bool is_another_in_group(r_err, R_messenger_name,
-                                      R_messenger_name, // group
-                                      p_messenger_user) {
-      return true;
+    t_bool is_another_in_group(r_err err, R_messenger_name name,
+                               R_messenger_name group, p_messenger_user user) {
+      return messaging::is_messenger_in_group(err, name, group, user);
     }
 
     t_msec get_max_wait() const {
@@ -305,8 +330,7 @@ namespace sandbox
     }
   }
 
-  t_void t_logic::post_message(t_err err, R_messenger_key key,
-                               x_message msg) const {
+  t_void t_logic::post_message(t_err err, R_messenger_key key, x_message msg) {
     ERR_GUARD(err) {
       if (impl_ == VALID && *impl_ == VALID)
         impl_->post_message(err, key, std::move(msg));
@@ -402,7 +426,7 @@ namespace sandbox
     }
   }
 
-  t_void t_logic::add_to_group(t_err err, R_password password,
+  t_void t_logic::add_to_group(t_err err, R_messenger_password password,
                                R_messenger_name group, t_messenger_prio prio,
                                t_messenger_user user) {
     ERR_GUARD(err) {
@@ -413,7 +437,7 @@ namespace sandbox
     }
   }
 
-  t_void t_logic::remove_from_group(t_err err, R_password password,
+  t_void t_logic::remove_from_group(t_err err, R_messenger_password password,
                                     R_messenger_name group,
                                     p_messenger_user user) {
     ERR_GUARD(err) {
@@ -476,7 +500,8 @@ namespace sandbox
     return false;
   }
 
-  t_void t_logic::add_another_to_group(t_err err, R_password password,
+  t_void t_logic::add_another_to_group(t_err err,
+                                       R_messenger_password password,
                                        R_messenger_name name,
                                        R_messenger_name group,
                                        t_messenger_prio prio,
@@ -489,7 +514,8 @@ namespace sandbox
     }
   }
 
-  t_void t_logic::remove_another_from_group(t_err err, R_password password,
+  t_void t_logic::remove_another_from_group(t_err err,
+                                            R_messenger_password password,
                                             R_messenger_name name,
                                             R_messenger_name group,
                                             p_messenger_user user) {
@@ -643,7 +669,7 @@ namespace sandbox
 
 ///////////////////////////////////////////////////////////////////////////////
 
-  t_main::t_main(t_err err, R_name name, t_ptr_ ptr) {
+  t_main::t_main(t_err err, R_name, t_ptr_ ptr) { // XXX - strange
     ERR_GUARD(err) {
       if (ptr == VALID && *ptr == VALID) {
         key_ = ptr->get_key();
@@ -655,9 +681,6 @@ namespace sandbox
       } else
         err = err::E_XXX;
     }
-  }
-
-  t_main::~t_main() {
   }
 
   t_main::operator t_validity() const {

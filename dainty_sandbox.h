@@ -160,7 +160,7 @@ namespace sandbox
 
 ///////////////////////////////////////////////////////////////////////////////
 
-    t_void post_message(t_err, R_messenger_key, x_message) const;
+    t_void post_message(t_err, R_messenger_key, x_message);
 
 ///////////////////////////////////////////////////////////////////////////////
 
@@ -185,10 +185,10 @@ namespace sandbox
 
 ///////////////////////////////////////////////////////////////////////////////
 
-    t_void add_to_group(t_err, R_password, R_messenger_name group,
+    t_void add_to_group(t_err, R_messenger_password, R_messenger_name group,
                                t_messenger_prio = t_messenger_prio(0),
                                t_messenger_user = t_messenger_user());
-    t_void remove_from_group(t_err, R_password, R_messenger_name,
+    t_void remove_from_group(t_err, R_messenger_password, R_messenger_name,
                                     p_messenger_user = nullptr);
     t_bool is_in_group(t_err, R_messenger_name,
                               p_messenger_user = nullptr) const;
@@ -204,12 +204,12 @@ namespace sandbox
 
 ///////////////////////////////////////////////////////////////////////////////
 
-    t_void add_another_to_group(t_err, R_password,
+    t_void add_another_to_group(t_err, R_messenger_password,
                                        R_messenger_name name,
                                        R_messenger_name group,
                                        t_messenger_prio = t_messenger_prio(0),
                                        t_messenger_user = t_messenger_user());
-    t_void remove_another_from_group(t_err, R_password,
+    t_void remove_another_from_group(t_err, R_messenger_password,
                                             R_messenger_name,
                                             R_messenger_name group,
                                             p_messenger_user = nullptr);
@@ -291,7 +291,7 @@ namespace sandbox
   class t_sandbox {
   public:
     using t_err  = t_logic::t_err;
-    using R_name = t_logic::R_messenger_name;
+    using R_name = t_logic::R_messenger_name; // thread name - XXX
     using t_ptr_ = t_ptr<t_logic, t_sandbox, named::ptr::t_deleter>;
 
     t_sandbox(t_err, R_name, t_ptr_);
@@ -318,13 +318,12 @@ namespace sandbox
   class t_main {
   public:
     using t_err  = t_logic::t_err;
-    using R_name = t_logic::R_messenger_name;
+    using R_name = t_logic::R_messenger_name; // application name - XXX
     using t_ptr_ = t_ptr<t_logic, t_main, named::ptr::t_deleter>;
 
     t_main(t_err, R_name, t_ptr_);
     t_main(x_main) = delete;
     t_main(R_main) = delete;
-    ~t_main();
 
     r_main operator=(x_main) = delete;
     r_main operator=(R_main) = delete;
