@@ -31,20 +31,21 @@
 #include "dainty_named_ptr.h"
 #include "dainty_named_string.h"
 #include "dainty_os_clock.h"
+#include "dainty_mt_detached_thread.h"
 #include "dainty_tracing.h"
 #include "dainty_messaging.h"
 #include "dainty_sandbox_err.h"
 
 ///////////////////////////////////////////////////////////////////////////////
 
-#define TR_DEBUG(...) \
-  TRACE_0(get_tracer(), trace::level_debug, ( __VA_ARGS__ ))
-#define TR_NOTICE(...) \
-  TRACE_0(get_tracer(), trace::level_notice, ( __VA_ARGS__ ))
-#define TR_WARNING(...) \
-  TRACE_0(get_tracer(), trace::level_warning, ( __VA_ARGS__ ))
-#define TR_ERROR(...) \
-  TRACE_0(get_tracer(), trace::level_error, ( __VA_ARGS__ ))
+#define SB_EMERG(TEXT)    DAINTY_TR_EMERG(tracer_, TEXT)
+#define SB_ALERT(TEXT)    DAINTY_TR_ALERT(tracer_, TEXT)
+#define SB_CRITICAL(TEXT) DAINTY_TR_CRITICAL(tracer_, TEXT)
+#define SB_ERROR(TEXT)    DAINTY_TR_ERROR(tracer_, TEXT)
+#define SB_WARNING(TEXT)  DAINTY_TR_WARNING(tracer_, TEXT)
+#define SB_NOTICE(TEXT)   DAINTY_TR_NOTICE(tracer_, TEXT)
+#define SB_INFO(TEXT)     DAINTY_TR_INFO(tracer_, TEXT)
+#define SB_DEBUG(TEXT)    DAINTY_TR_DEBUG(tracer_, TEXT)
 
 ///////////////////////////////////////////////////////////////////////////////
 
@@ -65,6 +66,7 @@ namespace sandbox
   using named::VALID;
   using named::INVALID;
   using os::clock::t_time;
+  using messaging::message::t_message;
 
   enum  t_label_tag_ { };
   using t_label = t_string<t_label_tag_>;
@@ -96,19 +98,24 @@ namespace sandbox
 
 ///////////////////////////////////////////////////////////////////////////////
 
+  using t_thread_           = mt::detached_thread::t_thread;
+  using t_thread_logic_     = t_thread_::t_logic;
+
+///////////////////////////////////////////////////////////////////////////////
+
   class t_logic;
   using r_logic = t_prefix<t_logic>::r_;
   using x_logic = t_prefix<t_logic>::x_;
   using R_logic = t_prefix<t_logic>::R_;
 
-  class t_logic {
+  class t_logic : private t_thread_logic_ {
   public:
     using t_err                     = sandbox::err::t_err;
     using t_fd                      = sandbox::t_fd;
     using t_stats                   = sandbox::t_stats;
     using t_label                   = sandbox::t_label;
     using t_message_logic           = sandbox::t_message_logic;
-    using r_tracer                  = tracing::tracer::r_tracer;
+    using t_tracer                  = tracing::tracer::t_tracer;
     using R_password                = messaging::R_password;
     using t_message                 = messaging::message::t_message;
     using x_message                 = messaging::message::x_message;
@@ -147,7 +154,6 @@ namespace sandbox
     operator t_validity() const;
 
     t_messenger_key  get_key   () const;
-    r_tracer         get_tracer(t_err) const;
     t_messenger_name get_name  (t_err) const;
     t_void           get_params(t_err, r_messenger_params) const;
     t_void           get_stats (t_err, r_stats, t_bool reset = false);
@@ -214,7 +220,7 @@ namespace sandbox
 ///////////////////////////////////////////////////////////////////////////////
 
     t_msec get_max_wait() const;
-    t_void set_max_wait(t_msec);
+    t_void set_max_wait(t_err, t_msec);
 
 ///////////////////////////////////////////////////////////////////////////////
 
@@ -253,10 +259,27 @@ namespace sandbox
     //virtual t_void process_failed(errorid_t, x_message) = 0;
     virtual t_void process_event(t_fd, R_label, t_messenger_user) = 0;
 
+  protected:
+    t_validity valid_ = INVALID;
+    t_tracer   tracer_;
+
   private:
+    friend class t_sandbox;
+    friend class t_main;
+    friend class t_impl_;
+
+    using t_thread_err = t_thread_logic_::t_err;
+
+    virtual t_void update(t_thread_err, os::r_pthread_attr) noexcept override;
+    virtual t_void prepare(t_thread_err) noexcept override;
+    virtual t_void run() noexcept override;
+
     using t_ptr_ = t_ptr<t_impl_, t_logic, named::ptr::t_deleter>;
+
     mutable t_ptr_ impl_;
   };
+  using p_logic = t_prefix<t_logic>::p_;
+  using r_logic = t_prefix<t_logic>::r_;
 
 ///////////////////////////////////////////////////////////////////////////////
 
@@ -272,16 +295,44 @@ namespace sandbox
     using t_ptr_ = t_ptr<t_logic, t_sandbox, named::ptr::t_deleter>;
 
     t_sandbox(t_err, R_name, t_ptr_);
+    t_sandbox(x_sandbox);
+    t_sandbox(R_sandbox) = delete;
     ~t_sandbox();
 
-    t_sandbox(R_sandbox) = delete;
-    t_sandbox(x_sandbox) = delete;
-
+    r_sandbox operator=(x_sandbox);
     r_sandbox operator=(R_sandbox) = delete;
-    r_sandbox operator=(x_sandbox) = delete;
+
+    operator t_validity() const;
 
   private:
-    t_logic::t_messenger_key key_;
+    t_logic::t_messenger_key key_ = t_logic::t_messenger_key{0};
+  };
+
+///////////////////////////////////////////////////////////////////////////////
+
+  class t_main;
+  using r_main = t_prefix<t_main>::r_;
+  using x_main = t_prefix<t_main>::x_;
+  using R_main = t_prefix<t_main>::R_;
+
+  class t_main {
+  public:
+    using t_err  = t_logic::t_err;
+    using R_name = t_logic::R_messenger_name;
+    using t_ptr_ = t_ptr<t_logic, t_main, named::ptr::t_deleter>;
+
+    t_main(t_err, R_name, t_ptr_);
+    t_main(x_main) = delete;
+    t_main(R_main) = delete;
+    ~t_main();
+
+    r_main operator=(x_main) = delete;
+    r_main operator=(R_main) = delete;
+
+    operator t_validity() const;
+
+  private:
+    t_logic::t_messenger_key key_ = t_logic::t_messenger_key{0};
   };
 
 ///////////////////////////////////////////////////////////////////////////////

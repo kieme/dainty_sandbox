@@ -24,7 +24,6 @@
 
 ******************************************************************************/
 
-#include "dainty_mt_detached_thread.h"
 #include "dainty_mt_event_dispatcher.h"
 #include "dainty_sandbox.h"
 
@@ -34,24 +33,24 @@ namespace dainty
 {
 namespace sandbox
 {
-  using messaging::message::t_message;
-
-  using t_logic_            = sandbox::t_logic;
-  using t_dispatcher_logic_ = mt::event_dispatcher::t_dispatcher::t_logic;
-  using t_thread_logic_     = mt::detached_thread::t_thread::t_logic;
+  using P_cstr              = named::P_cstr;
+  using t_key               = t_logic::t_messenger_key;
+  using t_messenger         = messaging::t_messenger;
+  using t_dispatcher_       = mt::event_dispatcher::t_dispatcher;
+  using t_dispatcher_logic_ = t_dispatcher_::t_logic;
 
 ///////////////////////////////////////////////////////////////////////////////
 
-  class t_impl_ : public t_thread_logic_, public t_dispatcher_logic_ {
+  class t_impl_ : public t_dispatcher_logic_ {
   public:
-    using t_thread_err              = t_thread_logic_::t_err;
+    using t_logic_                  = sandbox::t_logic;
     using t_err                     = t_logic_::t_err;
     using r_err                     = t_prefix<t_err>::r_;
+    using t_thread_err              = t_logic_::t_thread_err;
     using t_fd                      = t_logic_::t_fd;
     using t_stats                   = t_logic_::t_stats;
     using t_label                   = t_logic_::t_label;
     using t_message_logic           = t_logic_::t_message_logic;
-    using r_tracer                  = t_logic_::r_tracer;
     using R_password                = t_logic_::R_password;
     using t_message                 = t_logic_::t_message;
     using x_message                 = t_logic_::x_message;
@@ -79,8 +78,14 @@ namespace sandbox
     using r_messenger_monitor_list  = t_logic_::r_messenger_monitor_list;
     using R_messenger_create_params = t_logic_::R_messenger_create_params;
 
-    t_impl_(r_err err, R_messenger_name name,
-                       R_messenger_create_params params) {
+    t_impl_(r_err err, p_logic logic, R_messenger_name name,
+            R_messenger_create_params params) : logic_{logic},
+            dispatcher_{err, {t_n{100}, P_cstr{"epoll"}}},
+            msgr_{messaging::create_messenger(err, name, {})} {
+      ERR_GUARD(err) {
+        // dispatcher
+      }
+      valid_ = err ? INVALID : VALID;
     }
 
     ~t_impl_() {
@@ -91,10 +96,6 @@ namespace sandbox
     }
 
     t_messenger_key get_key() const {
-      return key_;
-    }
-
-    r_tracer get_tracer(r_err) const {
     }
 
     t_messenger_name get_name(r_err) const {
@@ -139,11 +140,11 @@ namespace sandbox
     t_void get_monitored(r_err, r_messenger_monitor_list) const {
     }
 
-    t_void add_to_group(r_err, R_password, R_messenger_name group,
+    t_void add_to_group(r_err, R_password, R_messenger_name, // group
                                t_messenger_prio, t_messenger_user) {
     }
 
-    t_void remove_from_group(r_err, R_password, R_messenger_name,
+    t_void remove_from_group(r_err, R_password, R_messenger_name, //group
                                     p_messenger_user) {
     }
 
@@ -212,13 +213,19 @@ namespace sandbox
       return true;
     }
 
-    virtual t_void update(t_thread_err, os::r_pthread_attr) noexcept override {
+    t_void update(t_thread_err, os::r_pthread_attr) noexcept {
     }
 
-    virtual t_void prepare(t_thread_err) noexcept override {
+    t_void prepare(t_thread_err) noexcept {
     }
 
-    virtual t_void run() noexcept override {
+    t_void run() noexcept {
+      // event_loop
+      t_err err;
+      dispatcher_.event_loop(err, this);
+      if (err) {
+        err.clear();
+      }
     }
 
     virtual t_void may_reorder_events(r_event_infos) override {
@@ -228,18 +235,19 @@ namespace sandbox
     }
 
     virtual t_quit notify_timeout(t_usec) override {
-      return true;
     }
 
     virtual t_quit notify_error(t_errn) override {
-      return true;
     }
 
     virtual t_quit notify_events_processed() override {
-      return true;
     }
 
+    p_logic logic_;
+
   private:
+    t_dispatcher_   dispatcher_;
+    t_messenger     msgr_;
     t_validity      valid_ = INVALID;
     t_messenger_key key_   = t_messenger_key{0};
   };
@@ -247,28 +255,32 @@ namespace sandbox
 ///////////////////////////////////////////////////////////////////////////////
 
   t_logic::t_logic(t_err err, R_messenger_name name,
-                              R_messenger_create_params params) {
-    // impl
+                   R_messenger_create_params params)
+      : tracer_{tracing::make_tracer(err, name.mk_range())} {
+    ERR_GUARD(err) {
+      impl_ = new t_impl_{err, this, name, params};
+      if (impl_ == INVALID)
+        err = err::E_XXX;
+      valid_ = err ? INVALID : VALID;
+    }
   }
 
   t_logic::~t_logic() {
   }
 
   t_logic::operator t_validity() const {
-    return impl_ ? *impl_ : INVALID;
+    return valid_;
   }
 
   t_logic::t_messenger_key t_logic::get_key() const {
-    if (impl_ && *impl_ == VALID)
+    if (impl_ == VALID && *impl_ == VALID)
       return impl_->get_key();
     return t_messenger_key{0};
   }
 
-  t_logic::r_tracer t_logic::get_tracer() const {
-  }
-
   t_logic::t_messenger_name t_logic::get_name(t_err err) const {
     ERR_GUARD(err) {
+      if (impl_ == VALID && *impl_ == VALID)
         return impl_->get_name(err);
       err = err::E_XXX;
     }
@@ -277,7 +289,7 @@ namespace sandbox
 
   t_void t_logic::get_params(t_err err, r_messenger_params params) const {
     ERR_GUARD(err) {
-      if (impl_ && *impl_ == VALID)
+      if (impl_ == VALID && *impl_ == VALID)
         impl_->get_params(err, params);
       else
         err = err::E_XXX;
@@ -286,7 +298,7 @@ namespace sandbox
 
   t_void t_logic::get_stats(t_err err, r_stats stats, t_bool reset) {
     ERR_GUARD(err) {
-      if (impl_ && *impl_ == VALID)
+      if (impl_ == VALID && *impl_ == VALID)
         impl_->get_stats(err, stats, reset);
       else
         err = err::E_XXX;
@@ -296,7 +308,7 @@ namespace sandbox
   t_void t_logic::post_message(t_err err, R_messenger_key key,
                                x_message msg) const {
     ERR_GUARD(err) {
-      if (impl_ && *impl_ == VALID)
+      if (impl_ == VALID && *impl_ == VALID)
         impl_->post_message(err, key, std::move(msg));
       else
         err = err::E_XXX;
@@ -305,7 +317,7 @@ namespace sandbox
 
   t_void t_logic::update_scope(t_err err, t_messenger_scope scope) {
     ERR_GUARD(err) {
-      if (impl_ && *impl_ == VALID)
+      if (impl_ == VALID && *impl_ == VALID)
         impl_->update_scope(err, scope);
       else
         err = err::E_XXX;
@@ -314,7 +326,7 @@ namespace sandbox
 
   t_void t_logic::update_alive_period(t_err err, t_multiple_of_100ms factor) {
     ERR_GUARD(err) {
-      if (impl_ && *impl_ == VALID)
+      if (impl_ == VALID && *impl_ == VALID)
         impl_->update_alive_period(err, factor);
       else
         err = err::E_XXX;
@@ -324,7 +336,7 @@ namespace sandbox
   t_void t_logic::start_message_timer(t_err err,
                                       R_messenger_timer_params params) {
     ERR_GUARD(err) {
-      if (impl_ && *impl_ == VALID)
+      if (impl_ == VALID && *impl_ == VALID)
         impl_->start_message_timer(err, params);
       else
         err = err::E_XXX;
@@ -333,7 +345,7 @@ namespace sandbox
 
   t_void t_logic::stop_message_timer(t_err err) {
     ERR_GUARD(err) {
-      if (impl_ && *impl_ == VALID)
+      if (impl_ == VALID && *impl_ == VALID)
         impl_->stop_message_timer(err);
       else
         err = err::E_XXX;
@@ -343,7 +355,7 @@ namespace sandbox
   t_void t_logic::query_message_timer(t_err err,
                                       r_messenger_timer_params params) const {
     ERR_GUARD(err) {
-      if (impl_ && *impl_ == VALID)
+      if (impl_ == VALID && *impl_ == VALID)
         impl_->query_message_timer(err, params);
       else
         err = err::E_XXX;
@@ -353,7 +365,7 @@ namespace sandbox
   t_void t_logic::add_monitor(t_err err, R_messenger_name name,
                               t_messenger_prio prio, t_messenger_user user) {
     ERR_GUARD(err) {
-      if (impl_ && *impl_ == VALID)
+      if (impl_ == VALID && *impl_ == VALID)
         impl_->add_monitor(err, name, prio, user);
       else
         err = err::E_XXX;
@@ -363,17 +375,18 @@ namespace sandbox
   t_void t_logic::remove_monitor(t_err err, R_messenger_name name,
                                  p_messenger_user user) {
     ERR_GUARD(err) {
-      if (impl_ && *impl_ == VALID)
+      if (impl_ == VALID && *impl_ == VALID)
         impl_->remove_monitor(err, name, user);
       else
         err = err::E_XXX;
     }
   }
 
-  t_messenger_key t_logic::is_monitored(t_err err, R_messenger_name name,
-                                        p_messenger_user user) const {
+  t_logic::t_messenger_key
+      t_logic::is_monitored(t_err err, R_messenger_name name,
+                                       p_messenger_user user) const {
     ERR_GUARD(err) {
-      if (impl_ && *impl_ == VALID)
+      if (impl_ == VALID && *impl_ == VALID)
         return impl_->is_monitored(err, name, user);
       err = err::E_XXX;
     }
@@ -382,7 +395,7 @@ namespace sandbox
 
   t_void t_logic::get_monitored(t_err err, r_messenger_monitor_list list) const {
     ERR_GUARD(err) {
-      if (impl_ && *impl_ == VALID)
+      if (impl_ == VALID && *impl_ == VALID)
         impl_->get_monitored(err, list);
       else
         err = err::E_XXX;
@@ -393,7 +406,7 @@ namespace sandbox
                                R_messenger_name group, t_messenger_prio prio,
                                t_messenger_user user) {
     ERR_GUARD(err) {
-      if (impl_ && *impl_ == VALID)
+      if (impl_ == VALID && *impl_ == VALID)
         impl_->add_to_group(err, password, group, prio, user);
       else
         err = err::E_XXX;
@@ -404,7 +417,7 @@ namespace sandbox
                                     R_messenger_name group,
                                     p_messenger_user user) {
     ERR_GUARD(err) {
-      if (impl_ && *impl_ == VALID)
+      if (impl_ == VALID && *impl_ == VALID)
         impl_->remove_from_group(err, password, group, user);
       else
         err = err::E_XXX;
@@ -414,7 +427,7 @@ namespace sandbox
   t_bool t_logic::is_in_group(t_err err, R_messenger_name group,
                               p_messenger_user user) const {
     ERR_GUARD(err) {
-      if (impl_ && *impl_ == VALID)
+      if (impl_ == VALID && *impl_ == VALID)
         return impl_->is_in_group(err, group, user);
       err = err::E_XXX;
     }
@@ -424,7 +437,7 @@ namespace sandbox
   t_void t_logic::get_groups(t_err err,
                              r_messenger_group_list list) const {
     ERR_GUARD(err) {
-      if (impl_ && *impl_ == VALID)
+      if (impl_ == VALID && *impl_ == VALID)
         impl_->get_groups(err, list);
       else
         err = err::E_XXX;
@@ -435,7 +448,7 @@ namespace sandbox
                                R_messenger_name group,
                                t_messenger_scope scope) {
     ERR_GUARD(err) {
-      if (impl_ && *impl_ == VALID)
+      if (impl_ == VALID && *impl_ == VALID)
         impl_->create_group(err, password, group, scope);
       else
         err = err::E_XXX;
@@ -445,7 +458,7 @@ namespace sandbox
   t_void t_logic::destroy_group(t_err err, R_password password,
                                 R_messenger_name group) {
     ERR_GUARD(err) {
-      if (impl_ && *impl_ == VALID)
+      if (impl_ == VALID && *impl_ == VALID)
         impl_->destroy_group(err, password, group);
       else
         err = err::E_XXX;
@@ -456,7 +469,7 @@ namespace sandbox
                            r_messenger_scope scope,
                            p_messenger_name_list list) {
     ERR_GUARD(err) {
-      if (impl_ && *impl_ == VALID)
+      if (impl_ == VALID && *impl_ == VALID)
         return impl_->is_group(err, group, scope, list);
       err = err::E_XXX;
     }
@@ -469,7 +482,7 @@ namespace sandbox
                                        t_messenger_prio prio,
                                        t_messenger_user user) {
     ERR_GUARD(err) {
-      if (impl_ && *impl_ == VALID)
+      if (impl_ == VALID && *impl_ == VALID)
         impl_->add_another_to_group(err, password, name, group, prio, user);
       else
         err = err::E_XXX;
@@ -481,7 +494,7 @@ namespace sandbox
                                             R_messenger_name group,
                                             p_messenger_user user) {
     ERR_GUARD(err) {
-      if (impl_ && *impl_ == VALID)
+      if (impl_ == VALID && *impl_ == VALID)
         impl_->remove_another_from_group(err, password, name, group, user);
       else
         err = err::E_XXX;
@@ -492,7 +505,7 @@ namespace sandbox
                                       R_messenger_name group,
                                       p_messenger_user user) {
     ERR_GUARD(err) {
-      if (impl_ && *impl_ == VALID)
+      if (impl_ == VALID && *impl_ == VALID)
         return impl_->is_another_in_group(err, name, group, user);
       err = err::E_XXX;
     }
@@ -500,14 +513,14 @@ namespace sandbox
   }
 
   t_msec t_logic::get_max_wait() const {
-    if (impl_ && *impl_ == VALID)
+    if (impl_ == VALID && *impl_ == VALID)
       return impl_->get_max_wait();
     return t_msec{0};
   }
 
   t_void t_logic::set_max_wait(t_err err, t_msec msec) {
     ERR_GUARD(err) {
-      if (impl_ && *impl_ == VALID)
+      if (impl_ == VALID && *impl_ == VALID)
         impl_->set_max_wait(err, msec);
       else
         err = err::E_XXX;
@@ -518,27 +531,26 @@ namespace sandbox
                                          R_label label,
                                          p_message_logic logic) {
     ERR_GUARD(err) {
-      if (impl_ && *impl_ == VALID)
+      if (impl_ == VALID && *impl_ == VALID)
         impl_->register_message_logic(err, mid, label, logic);
       else
         err = err::E_XXX;
     }
   }
 
-  t_logic::p_message_logic
-      t_logic::unregister_message_logic(t_err err, R_label label) {
+  p_message_logic t_logic::unregister_message_logic(t_err err, R_label label) {
     ERR_GUARD(err) {
-      if (impl_ && *impl_ == VALID)
+      if (impl_ == VALID && *impl_ == VALID)
         return impl_->unregister_message_logic(err, label);
       err = err::E_XXX;
     }
     return nullptr;
   }
 
-  t_logic::p_message_logic
-      t_logic::is_message_logic_registered(t_err err, R_label label) const {
+  p_message_logic t_logic::is_message_logic_registered(t_err err,
+                                                       R_label label) const {
     ERR_GUARD(err) {
-      if (impl_ && *impl_ == VALID)
+      if (impl_ == VALID && *impl_ == VALID)
         return impl_->is_message_logic_registered(err, label);
       err = err::E_XXX;
     }
@@ -548,7 +560,7 @@ namespace sandbox
   t_void t_logic::add_event_monitor(t_err err, t_fd fd, R_label label,
                                     t_messenger_user user) {
     ERR_GUARD(err) {
-      if (impl_ && *impl_ == VALID)
+      if (impl_ == VALID && *impl_ == VALID)
         impl_->add_event_monitor(err, fd, label, user);
       else
         err = err::E_XXX;
@@ -558,7 +570,7 @@ namespace sandbox
   t_void t_logic::remove_event_monitor(t_err err, t_fd fd, p_label label,
                                        p_messenger_user user) {
     ERR_GUARD(err) {
-      if (impl_ && *impl_ == VALID)
+      if (impl_ == VALID && *impl_ == VALID)
         impl_->remove_event_monitor(err, fd, label, user);
       else
         err = err::E_XXX;
@@ -568,27 +580,88 @@ namespace sandbox
   t_bool t_logic::is_event_monitored(t_err err, t_fd fd, p_label label,
                                      p_messenger_user user) {
     ERR_GUARD(err) {
-      if (impl_ && *impl_ == VALID)
+      if (impl_ == VALID && *impl_ == VALID)
         return impl_->is_event_monitored(err, fd, label, user);
       err = err::E_XXX;
     }
     return false;
   }
 
+  t_void t_logic::update(t_thread_err err, os::r_pthread_attr attr) noexcept {
+    impl_->update(err, attr);
+  }
+
+  t_void t_logic::prepare(t_thread_err err) noexcept {
+    impl_->prepare(err);
+  }
+
+  t_void t_logic::run() noexcept {
+    impl_->run();
+  }
+
 ///////////////////////////////////////////////////////////////////////////////
 
-  t_sandbox::t_sandbox(t_err err, R_name name, t_ptr_ ptr)
-    : key_{0/* get it from logic*/},
-      thread_(err, name.get_cstr(), {ptr.release()}) {
+  t_void send_killmsg(t_key key) {
+    if (get(key)) {
+      t_logic::t_err err;
+      messaging::post_message(err, key, t_message{}); // t_kill_message
+      if (err) {
+        // XXX-now
+        err.clear();
+      }
+    }
+  }
+
+  t_sandbox::t_sandbox(t_err err, R_name name, t_ptr_ ptr) {
+    ERR_GUARD(err) {
+      if (ptr == VALID && *ptr == VALID) {
+        key_ = ptr->get_key();
+        t_thread_ thread{err, name.get_cstr(), {ptr.release()}};
+        if (err)
+          named::reset(key_);
+      } else
+        err = err::E_XXX;
+    }
+  }
+
+  t_sandbox::t_sandbox(x_sandbox sandbox) {
+    if (sandbox == VALID)
+      named::reset(key_ ,named::reset(sandbox.key_));
   }
 
   t_sandbox::~t_sandbox() {
-    t_err err;
-    messaging::post_message(err, key_, t_message{}); // t_kill_message
-    if (err) {
-      // XXX-now
-      err.clear();
+    send_killmsg(key_);
+  }
+
+  r_sandbox t_sandbox::operator=(x_sandbox sandbox) {
+    send_killmsg(t_key{named::reset(key_, named::reset(sandbox.key_))});
+  }
+
+  t_sandbox::operator t_validity() const {
+    return get(key_) ? VALID : INVALID;
+  }
+
+///////////////////////////////////////////////////////////////////////////////
+
+  t_main::t_main(t_err err, R_name name, t_ptr_ ptr) {
+    ERR_GUARD(err) {
+      if (ptr == VALID && *ptr == VALID) {
+        key_ = ptr->get_key();
+        ptr->prepare(err);
+        if (!err)
+          ptr->run();
+        else
+          named::reset(key_);
+      } else
+        err = err::E_XXX;
     }
+  }
+
+  t_main::~t_main() {
+  }
+
+  t_main::operator t_validity() const {
+    return get(key_) ? VALID : INVALID;
   }
 
 ///////////////////////////////////////////////////////////////////////////////
