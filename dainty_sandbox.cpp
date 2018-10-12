@@ -702,6 +702,7 @@ namespace sandbox
   }
 
   t_sandbox::~t_sandbox() {
+    std::cout << "kill for " << get(key_) << std::endl;
     send_killmsg(key_);
   }
 

@@ -10,7 +10,7 @@ using namespace dainty::sandbox;
 class juggle : public t_logic {
 public:
   juggle(t_err err, t_crange name, t_crange other) : t_logic{err, name, {}} {
-    add_monitor(err, other);
+//    add_monitor(err, other);
   }
 
   virtual t_void process_wakeup(t_time elapsed, t_bool maxwait) override {
@@ -55,6 +55,7 @@ t_int main() {
     t_sandbox sb2 {err, mk_range("sb2"),  new juggle{err, juggle2, juggle3}};
     t_sandbox sb3 {err, mk_range("sb3"),  new juggle{err, juggle3, juggle4}};
 //    t_main    main{err, mk_range("main"), new juggle{err, juggle4, juggle1}};
+
   }
   sleep(2);
   return 0;
