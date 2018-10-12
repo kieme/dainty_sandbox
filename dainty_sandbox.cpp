@@ -24,6 +24,7 @@
 
 ******************************************************************************/
 
+#include <iostream>
 #include "dainty_mt_event_dispatcher.h"
 #include "dainty_sandbox.h"
 
@@ -36,9 +37,12 @@ namespace sandbox
   using named::P_cstr;
   using messaging::t_messenger;
   using messaging::message::t_message;;
-  using t_key               = t_logic::t_messenger_key;
-  using t_dispatcher_       = mt::event_dispatcher::t_dispatcher;
-  using t_dispatcher_logic_ = t_dispatcher_::t_logic;
+  using mt::event_dispatcher::RD;
+  using mt::event_dispatcher::QUIT_EVENT_LOOP;
+  using t_key                     = t_logic::t_messenger_key;
+  using t_dispatcher_             = mt::event_dispatcher::t_dispatcher;
+  using t_dispatcher_logic_       = t_dispatcher_::t_logic;
+  using t_dispatcher_event_logic_ = mt::event_dispatcher::t_event_logic;
 
 ///////////////////////////////////////////////////////////////////////////////
 
@@ -50,7 +54,8 @@ namespace sandbox
 
 ///////////////////////////////////////////////////////////////////////////////
 
-  class t_impl_ : public t_dispatcher_logic_ {
+  class t_impl_ : public t_dispatcher_logic_,
+                  public t_dispatcher_event_logic_ {
   public:
     using t_logic_                  = sandbox::t_logic;
     using t_err                     = t_logic_::t_err;
@@ -90,8 +95,10 @@ namespace sandbox
             R_messenger_create_params params) : logic_{logic},
             dispatcher_{err, {t_n{100}, P_cstr{"epoll_service"}}},
             msgr_{messaging::create_messenger(err, name, {})} {
+            // timer
       ERR_GUARD(err) {
-        // dispatcher
+        dispatcher_.add_event(err, {msgr_.get_fd(), RD}, this);
+        //dispatcher_.add_event(err, {msgr_.get_fd(), RD}, this); timer
       }
       valid_ = err ? INVALID : VALID;
     }
@@ -253,36 +260,57 @@ namespace sandbox
     }
 
     t_void run() noexcept {
-      // event_loop
       t_err err;
-      dispatcher_.event_loop(err, this);
+
+      do {
+        if (get(timeout_))
+          dispatcher_.event_loop(err, this, t_usec{get(timeout_)*1000});
+        else
+          dispatcher_.event_loop(err, this);
+      } while (!quit_ && !err);
+
       if (err) {
         err.clear();
       }
+      std::cout << "sandbox died" << std::endl;
     }
 
     virtual t_void may_reorder_events(r_event_infos) override {
+      // wakeup
     }
 
     virtual t_void notify_event_remove(r_event_info) override {
     }
 
     virtual t_quit notify_timeout(t_usec) override {
+      return true;
     }
 
     virtual t_quit notify_error(t_errn) override {
+      return true;
     }
 
     virtual t_quit notify_events_processed() override {
+      return true;
     }
 
-    p_logic logic_;
+    virtual t_name get_name() const override {
+      return t_name{};
+    }
+
+    virtual t_action notify_event(r_event_params params) override {
+      quit_ = true;
+      return {QUIT_EVENT_LOOP};
+    }
 
   private:
+    p_logic         logic_;
     t_dispatcher_   dispatcher_;
     t_messenger     msgr_;
-    t_validity      valid_ = INVALID;
-    t_messenger_key key_   = t_messenger_key{0};
+    t_bool          quit_    = false;
+    t_msec          timeout_ = t_msec{0};
+    t_validity      valid_   = INVALID;
+    t_messenger_key key_     = t_messenger_key{0};
   };
 
 ///////////////////////////////////////////////////////////////////////////////
