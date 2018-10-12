@@ -33,11 +33,20 @@ namespace dainty
 {
 namespace sandbox
 {
-  using P_cstr              = named::P_cstr;
+  using named::P_cstr;
+  using messaging::t_messenger;
+  using messaging::message::t_message;;
   using t_key               = t_logic::t_messenger_key;
-  using t_messenger         = messaging::t_messenger;
   using t_dispatcher_       = mt::event_dispatcher::t_dispatcher;
   using t_dispatcher_logic_ = t_dispatcher_::t_logic;
+
+///////////////////////////////////////////////////////////////////////////////
+
+  struct t_kill_message : public t_message {
+    t_kill_message() : t_message{t_n{0}} {
+      set(t_id{t_domain{1}, t_user{1}, t_version{0}}, t_n{0});
+    }
+  };
 
 ///////////////////////////////////////////////////////////////////////////////
 
@@ -46,7 +55,6 @@ namespace sandbox
     using t_logic_                  = sandbox::t_logic;
     using t_err                     = t_logic_::t_err;
     using r_err                     = t_prefix<t_err>::r_;
-    using t_thread_err              = t_logic_::t_thread_err;
     using t_fd                      = t_logic_::t_fd;
     using t_stats                   = t_logic_::t_stats;
     using t_label                   = t_logic_::t_label;
@@ -80,7 +88,7 @@ namespace sandbox
 
     t_impl_(r_err err, p_logic logic, R_messenger_name name,
             R_messenger_create_params params) : logic_{logic},
-            dispatcher_{err, {t_n{100}, P_cstr{"epoll"}}},
+            dispatcher_{err, {t_n{100}, P_cstr{"epoll_service"}}},
             msgr_{messaging::create_messenger(err, name, {})} {
       ERR_GUARD(err) {
         // dispatcher
@@ -238,10 +246,10 @@ namespace sandbox
       return true;
     }
 
-    t_void update(t_thread_err, os::r_pthread_attr) noexcept {
+    t_void update(t_err, os::r_pthread_attr) noexcept {
     }
 
-    t_void prepare(t_thread_err) noexcept {
+    t_void prepare(t_err) noexcept {
     }
 
     t_void run() noexcept {
@@ -614,11 +622,21 @@ namespace sandbox
   }
 
   t_void t_logic::update(t_thread_err err, os::r_pthread_attr attr) noexcept {
-    impl_->update(err, attr);
+    ERR_GUARD(err) {
+      if (impl_ == VALID && *impl_ == VALID)
+        impl_->update(err, attr);
+      else
+        err = err::E_XXX;
+    }
   }
 
   t_void t_logic::prepare(t_thread_err err) noexcept {
-    impl_->prepare(err);
+    ERR_GUARD(err) {
+      if (impl_ == VALID && *impl_ == VALID)
+        impl_->prepare(err);
+      else
+        err = err::E_XXX;
+    }
   }
 
   t_void t_logic::run() noexcept {
@@ -630,7 +648,7 @@ namespace sandbox
   t_void send_killmsg(t_key key) {
     if (get(key)) {
       t_logic::t_err err;
-      messaging::post_message(err, key, t_message{}); // t_kill_message
+      messaging::post_message(err, key, t_kill_message{});
       if (err) {
         // XXX-now
         err.clear();
