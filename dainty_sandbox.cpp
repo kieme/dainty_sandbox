@@ -702,7 +702,6 @@ namespace sandbox
   }
 
   t_sandbox::~t_sandbox() {
-    std::cout << "kill for " << get(key_) << std::endl;
     send_killmsg(key_);
   }
 
@@ -732,6 +731,15 @@ namespace sandbox
 
   t_main::operator t_validity() const {
     return get(key_) ? VALID : INVALID;
+  }
+
+///////////////////////////////////////////////////////////////////////////////
+
+  t_void start(err::t_err err) {
+    ERR_GUARD(err) {
+      tracing::start(err);
+      messaging::start(err, P_cstr{"messaging"});
+    }
   }
 
 ///////////////////////////////////////////////////////////////////////////////

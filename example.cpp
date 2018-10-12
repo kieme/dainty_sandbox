@@ -46,6 +46,8 @@ private:
 t_int main() {
   t_err err;
   {
+    start(err);
+
     auto juggle1 = mk_range("juggle1");
     auto juggle2 = mk_range("juggle2");
     auto juggle3 = mk_range("juggle3");
@@ -55,7 +57,6 @@ t_int main() {
     t_sandbox sb2 {err, mk_range("sb2"),  new juggle{err, juggle2, juggle3}};
     t_sandbox sb3 {err, mk_range("sb3"),  new juggle{err, juggle3, juggle4}};
 //    t_main    main{err, mk_range("main"), new juggle{err, juggle4, juggle1}};
-
   }
   sleep(2);
   return 0;
