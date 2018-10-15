@@ -30,6 +30,7 @@
 #include "dainty_named.h"
 #include "dainty_named_ptr.h"
 #include "dainty_named_string.h"
+#include "dainty_named_terminal.h"
 #include "dainty_os_clock.h"
 #include "dainty_mt_detached_thread.h"
 #include "dainty_tracing.h"
@@ -67,6 +68,7 @@ namespace sandbox
   using named::INVALID;
   using os::clock::t_time;
   using messaging::message::t_message;
+  using namespace dainty::named::terminal;
 
   enum  t_label_tag_ { };
   using t_label = t_string<t_label_tag_>;
