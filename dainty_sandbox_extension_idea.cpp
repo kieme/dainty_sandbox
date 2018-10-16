@@ -16,6 +16,7 @@ namespace sandbox
     p_impl_ impl_;
   };
   using p_logic = t_logic*;
+  using r_logic = t_logic&;
 
   struct t_sandbox {
      t_sandbox(p_logic);
@@ -29,7 +30,7 @@ namespace datashare
   using  p_impl_ = t_impl_*;
 
   struct t_logic {
-    t_logic(sandbox::t_logic&) {
+    t_logic(sandbox::r_logic logic) : logic_{logic} {
     }
 
     // datashare api
@@ -39,7 +40,8 @@ namespace datashare
     virtual void callback_2() = 0;
 
   private:
-    p_impl_ impl_;
+    sandbox::r_logic logic_;
+    p_impl_          impl_;
   };
   using p_logic = t_logic*;
 }
@@ -50,7 +52,7 @@ namespace dacli
   using  p_impl_ = t_impl_*;
 
   struct t_logic {
-    t_logic(sandbox::t_logic&) {
+    t_logic(sandbox::r_logic logic) : logic_{logic} {
     }
 
     // dacli api
@@ -60,7 +62,8 @@ namespace dacli
     virtual void callback_3() = 0;
 
   private:
-    p_impl_ impl_;
+    sandbox::r_logic logic_;
+    p_impl_          impl_;
   };
   using p_logic = t_logic*;
 }
